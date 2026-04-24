@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Análisis Funcional: Compras y Localización Ecuador</title>
+
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/white.css">
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+
+    <style>
+        .reveal section img { background:none; border:none; box-shadow:none; }
+        .highlight { color: #2980b9; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Portada -->
+            <section>
+                <h1>Análisis de Módulos</h1>
+                <h3>Purchase Request & Document Import (Ecuador)</h3>
+                <p>
+                    <small>Guía para Consultores Funcionales</small>
+                </p>
+            </section>
+
+            <!-- Módulo: Purchase Request -->
+            <section>
+                <section>
+                    <h2>Purchase Request</h2>
+                    <p class="fragment">¿Por qué usarlo en lugar de ir directo a la Orden de Compra?</p>
+                    <ul>
+                        <li class="fragment">Separa la <span class="highlight">necesidad</span> de la <span class="highlight">operación</span>.</li>
+                        <li class="fragment">Control presupuestario preventivo.</li>
+                        <li class="fragment">Flujo de aprobación multi-nivel.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3>Flujo y Estructura</h3>
+                    <ol>
+                        <li><span class="highlight">Creación:</span> Un empleado solicita bienes o servicios.</li>
+                        <li><span class="highlight">Aprobación:</span> El responsable revisa y valida el requerimiento.</li>
+                        <li><span class="highlight">Consolidación:</span> Compras agrupa varias solicitudes en un solo presupuesto (RFQ).</li>
+                    </ol>
+                    <p class="fragment" style="font-size: 0.7em; margin-top: 20px;">
+                        Técnicamente: Se vinculan registros de <code>purchase.request.line</code> a <code>purchase.order.line</code>, manteniendo la trazabilidad desde la solicitud hasta la recepción.
+                    </p>
+                </section>
+                <section>
+                    <h3>Gestión de Líneas y Auditoría</h3>
+                    <ul>
+                        <li class="fragment"><span class="highlight">Unificación:</span> Permite consolidar múltiples solicitudes en una sola RFQ para optimizar costos.</li>
+                        <li class="fragment"><span class="highlight">Control:</span> Cada línea hereda el centro de costo y analítica original del solicitante.</li>
+                        <li class="fragment"><span class="highlight">Historial:</span> Chatter detallado con el registro de quién aprobó y qué se modificó.</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Módulo: l10n_ec_document_import -->
+            <section>
+                <section>
+                    <h2>Importación de Documentos (Ecuador)</h2>
+                    <p>Integración con el <span class="highlight">SRI</span></p>
+                    <ul>
+                        <li class="fragment">Automatiza la creación de facturas de proveedor.</li>
+                        <li class="fragment">Lee archivos <span class="highlight">XML</span> autorizados.</li>
+                        <li class="fragment">Valida RUC, Autorización y Fecha de Emisión.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3>Validaciones Técnicas</h3>
+                    <ul>
+                        <li class="fragment">Estructura basada en el esquema <span class="highlight">at.xsd</span>.</li>
+                        <li class="fragment">Verificación de la <span class="highlight">Clave de Acceso</span> (49 dígitos).</li>
+                        <li class="fragment">Detección de ambiente (Pruebas vs Producción).</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3>Estados del Documento EDI</h3>
+                    <p>Ciclo de vida validado en tests:</p>
+                    <ul>
+                        <li class="fragment"><span class="highlight">to_send:</span> El XML está firmado localmente pero el webservice del SRI aún no lo procesa.</li>
+                        <li class="fragment"><span class="highlight">sent:</span> Recepción y Autorización confirmada. El documento es legalmente vinculante.</li>
+                        <li class="fragment"><span class="highlight">error:</span> El SRI rechazó el archivo (ej. firma caducada o RUC inválido). Requiere corrección y re-intento.</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Comparativa Técnica -->
+            <section>
+                <section>
+                    <h2>Importación EC vs Estándar</h2>
+                    <p>¿Por qué no usar la carga manual o el OCR estándar?</p>
+                </section>
+                <section style="font-size: 0.8em;">
+                    <h3>Diferencias Clave</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Característica</th>
+                                <th>Odoo Estándar</th>
+                                <th>l10n_ec Import</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Entrada</td>
+                                <td>Manual / OCR / CSV</td>
+                                <td class="highlight">XML SRI Directo</td>
+                            </tr>
+                            <tr>
+                                <td>Impuestos</td>
+                                <td>Manual por línea</td>
+                                <td class="highlight">Mapeo por Códigos (307, 312...)</td>
+                            </tr>
+                            <tr>
+                                <td>Legal</td>
+                                <td>Genérico</td>
+                                <td class="highlight">Sustento Tributario (ATS)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+                <section>
+                    <h3>Diferencia Técnica: Parsing vs OCR</h3>
+                    <ul>
+                        <li class="fragment"><strong>Odoo Estándar:</strong> El OCR es probabilístico (IA). Interpreta imágenes con margen de error.</li>
+                        <li class="fragment"><strong>l10n_ec_import:</strong> Es un <span class="highlight">Parsing Determinístico</span>. Extrae el valor exacto del XML autorizado.</li>
+                        <li class="fragment"><strong>Validación SRI:</strong> Verifica que la autorización del XML sea real mediante la clave de acceso de 49 dígitos.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3>Automatización de Impuestos</h3>
+                    <p style="font-size: 0.8em;">El módulo mapea automáticamente las bases imponibles según el SRI:</p>
+                    <ul style="font-size: 0.7em;">
+                        <li class="fragment"><strong>baseImpGrav:</strong> IVA tarifa diferente de 0%.</li>
+                        <li class="fragment"><strong>baseImponible:</strong> IVA tarifa 0%.</li>
+                        <li class="fragment"><strong>baseNoGraIva:</strong> Conceptos no objeto de impuesto.</li>
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Integración -->
+            <section>
+                <h2>La Cadena de Valor</h2>
+                <p>Integración de procesos:</p>
+                <blockquote style="font-size: 0.8em;">
+                    "Desde que surge la necesidad interna (<span class="highlight">Purchase Request</span>), pasando por la compra, hasta que el SRI nos entrega el comprobante digital y lo procesamos automáticamente (<span class="highlight">Document Import</span>)."
+                </blockquote>
+            </section>
+
+            <!-- Conclusión -->
+            <section style="text-align: left;">
+                <h1>FIN</h1>
+                <p>
+                    - Optimización de procesos internos.<br>
+                    - Cumplimiento fiscal ecuatoriano automatizado.
+                </p>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+
+    <script>
+        Reveal.initialize({
+            controls: true,
+            progress: true,
+            history: true,
+            center: true,
+            transition: 'convex',
+            dependencies: [
+                { src: 'plugin/markdown/marked.js' },
+                { src: 'plugin/markdown/markdown.js' },
+                { src: 'plugin/notes/notes.js', async: true },
+                { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+            ]
+        });
+    </script>
+</body>
+</html>
